@@ -1,0 +1,44 @@
+﻿# Core Python Engine ( sign _ server . py ) 
+
+  Using the open - source driver library rpi - rgb - led - matrix and Pillow , this script provides a
+
+  web - controllable frame generator for a 288 × 32 canvas : 
+
+  import time
+  from rgbmatrix import RGBMatrix, RGBMatrixOptions
+  from PIL import Image, ImageDraw, ImageFont
+  from flask import Flask, request, jsonify 
+
+  # 1. Display Con fi guration (288 x 32 total resolution ) options = RGBMatrixOptions () options . rows = 32 
+
+  options . cols = 64 options . chain _ length = 4 # Adjust chain length to match physical panels ( e . g ., 28 options . parallel = 1 options . hardware _ mapping = ' adafruit - hat ' options . brightness = 75 
+
+  matrix = RGBMatrix ( options = options ) 
+
+  canvas = matrix . CreateFrameCanvas ()
+
+  app = Flask (__ name __) 
+
+  # Playlist state 
+
+  slides = [ { " text " : " STRAYCAP MULTISPACE " , " hold " : 5.0 , " color " : ( 255 , 60 , 0 )}, 
+
+  { " text " : " Free laser , 3 d print , woodshop " , " hold " : 5.0 , " color " : ( 255 , 180 , 0 )} ] 
+
+  def render _ slide ( text , text _ color ): """ Draws crisp rasterized text to an off - screen PIL image .""" 
+
+  img = Image . new ( " RGB " , ( 288 , 32 ), ( 0 , 0 , 0 )) draw = ImageDraw . Draw ( img ) font = ImageFont . truetype ( "/ usr / share / fonts / truetype / dejavu / DejaVuSans - Bold . ttf " 
+
+  # Center text horizontally and vertically bbox = draw . textbbox (( 0 , 0 ), text , font = font ) text _ w , text _ h = bbox [^ 3_2 ] - bbox [^ 3_0 ], bbox [^ 3_3 ] - bbox [^ 3_1 ] 
+
+  x = ( 288 - text _ w ) // 2 y = ( 32 - text _ h ) // 2 - 2 
+
+  draw . text (( x , y ), text , font = font , fi ll = text _ color ) return img 
+
+  @ app . route ( '/ api / playlist ' , methods =[ ' POST ' ] ) 
+
+  def update _ playlist (): global slides slides = request . json . get ( ' slides ' , slides ) return jsonify ({ " status " : " updated " , " count " : len ( slides )}) 
+
+  @ app . route ( '/ api / alert ' , methods =[ ' POST ' ] ) def immediate _ alert (): 
+
+  """ Interrupt normal loop for emergency / priority announcement .""" msg = request . json . get ( ' message ' , '' ) img = render _ slide ( msg , ( 255 , 0 , 0 )) canvas . SetImage ( img ) matrix . SwapOnVSync ( canvas ) return jsonify ({ " status " : " alert displayed " }) 
